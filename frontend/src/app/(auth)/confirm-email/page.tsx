@@ -28,7 +28,7 @@ function ConfirmEmailInner() {
       .confirmEmail(token)
       .then(() => {
         setState("success");
-        setTimeout(() => router.push("/dashboard"), 1500);
+        setTimeout(() => router.push("/chat"), 1500);
       })
       .catch((e) => {
         const err = e as AxiosError<{ detail?: string }>;

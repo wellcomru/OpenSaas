@@ -4,8 +4,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
-  CreditCard,
+  Bot,
   Gift,
+  MessageSquare,
+  Wallet,
   LayoutDashboard,
   Settings,
   ShieldCheck,
@@ -16,10 +18,12 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import { useUiStore } from "@/store/uiStore";
 import { cn } from "@/lib/utils";
+import { BRAND_NAME } from "@/lib/brand";
 
 const userNav = [
+  { href: "/chat", label: "Чат с ИИ", icon: MessageSquare },
   { href: "/dashboard", label: "Главная", icon: LayoutDashboard },
-  { href: "/billing", label: "Подписка", icon: CreditCard },
+  { href: "/billing", label: "Баланс", icon: Wallet },
   { href: "/referrals", label: "Рефералы", icon: Gift },
   { href: "/settings", label: "Настройки", icon: Settings },
 ];
@@ -27,6 +31,7 @@ const userNav = [
 const adminNav = [
   { href: "/admin", label: "Админ", icon: ShieldCheck },
   { href: "/admin/users", label: "Пользователи", icon: Users },
+  { href: "/admin/models", label: "Модели ИИ", icon: Bot },
   { href: "/admin/billing", label: "Платежи", icon: DollarSign },
   { href: "/admin/referrals", label: "Выплаты", icon: Gift },
 ];
@@ -71,7 +76,8 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           </div>
           {adminNav.map((item) => {
             const Icon = item.icon;
-            const active = pathname?.startsWith(item.href);
+            const active =
+              pathname === item.href || (item.href !== "/admin" && pathname?.startsWith(item.href));
             return (
               <Link
                 key={item.href}
@@ -98,9 +104,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
-      <Link href="/dashboard" className="flex h-16 items-center gap-2.5 px-5 no-underline">
+      <Link href="/chat" className="flex h-16 items-center gap-2.5 px-5 no-underline">
         <Image src="/logo.png" alt="" width={28} height={28} className="rounded-lg" />
-        <span className="font-display text-[15px] text-foreground">OpenSaaS</span>
+        <span className="font-display text-[15px] text-foreground">{BRAND_NAME}</span>
       </Link>
       <NavLinks onNavigate={onNavigate} />
     </>
@@ -113,7 +119,7 @@ export function Sidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-border bg-secondary/50 md:block">
+      <aside className="sticky top-0 hidden h-[100dvh] w-64 shrink-0 border-r border-border bg-secondary/50 md:block">
         <SidebarContent />
       </aside>
 

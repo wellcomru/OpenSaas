@@ -2,7 +2,6 @@
 
 - get_current_user: JWT auth для internal API
 - require_admin: проверка роли админа
-- require_active_subscription: проверка trial/active подписки
 """
 from __future__ import annotations
 
@@ -18,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
 from database import get_db
 from modules.auth.models import User
-from modules.billing.models import Subscription, SubscriptionStatus
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
@@ -69,38 +67,3 @@ async def require_admin(user: CurrentUser) -> User:
 
 
 AdminUser = Annotated[User, Depends(require_admin)]
-
-
-async def require_active_subscription(
-    user: CurrentUser,
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> Subscription:
-    """Разрешает доступ если подписка trial (не истёкший) или active."""
-    from datetime import datetime, timezone
-
-    sub = await db.scalar(
-        select(Subscription).where(Subscription.user_id == user.id)
-    )
-    if sub is None:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail={"message": "No subscription", "redirect": "/billing"},
-        )
-
-    now = datetime.now(timezone.utc)
-    if sub.status == SubscriptionStatus.TRIAL:
-        if sub.current_period_end and sub.current_period_end > now:
-            return sub
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail={"message": "Trial expired", "redirect": "/billing"},
-        )
-    if sub.status == SubscriptionStatus.ACTIVE:
-        return sub
-    raise HTTPException(
-        status_code=status.HTTP_402_PAYMENT_REQUIRED,
-        detail={"message": "Subscription inactive", "redirect": "/billing"},
-    )
-
-
-ActiveSubscription = Annotated[Subscription, Depends(require_active_subscription)]

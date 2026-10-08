@@ -24,7 +24,7 @@ from modules.auth.utils import (
     hash_password,
     verify_password,
 )
-from modules.billing.models import Subscription, SubscriptionStatus
+from modules.billing.models import BalanceTransactionKind
 
 
 async def register_user(
@@ -45,20 +45,18 @@ async def register_user(
     user = User(
         email=payload.email,
         hashed_password=hash_password(payload.password),
-        trial_ends_at=now + timedelta(days=settings.trial_days),
     )
     db.add(user)
     await db.flush()
 
     db.add(UserProfile(user_id=user.id, first_name=payload.first_name, last_name=payload.last_name))
-    db.add(
-        Subscription(
-            user_id=user.id,
-            status=SubscriptionStatus.TRIAL,
-            current_period_start=now,
-            current_period_end=now + timedelta(days=settings.trial_days),
+    if settings.welcome_bonus > 0:
+        from modules.billing.service import credit
+
+        await credit(
+            db, user.id, settings.welcome_bonus, BalanceTransactionKind.BONUS,
+            "Приветственный бонус",
         )
-    )
 
     code: str | None = None
     if with_code:

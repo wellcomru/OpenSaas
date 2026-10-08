@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +18,7 @@ from modules.billing.robokassa import verify_result_signature
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 
-@router.post("/robokassa")
+@router.post("/robokassa", response_class=PlainTextResponse)
 async def robokassa_webhook(
     bg: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -34,7 +35,8 @@ async def robokassa_webhook(
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     payment = await db.scalar(
-        select(Payment).where(Payment.provider_payment_id == InvId)
+        # FOR UPDATE: повторный webhook ждёт, пока первый зачислит деньги.
+        select(Payment).where(Payment.provider_payment_id == InvId).with_for_update()
     )
     if payment is None:
         raise HTTPException(status_code=404, detail="Payment not found")
@@ -42,8 +44,8 @@ async def robokassa_webhook(
     if payment.status == PaymentStatus.SUCCESS:
         return f"OK{InvId}"
 
-    payment.status = PaymentStatus.SUCCESS
-    await billing_service.activate_paid_subscription(db, payment)
+    # Зачисляем сумму из нашей записи о платеже, а не OutSum из запроса.
+    await billing_service.apply_successful_payment(db, payment)
 
     payout = await ref_service.process_payment_for_referral(db, payment)
 
@@ -71,7 +73,7 @@ async def stripe_webhook(request: Request):
     3. event = stripe.Webhook.construct_event(body, sig, STRIPE_WEBHOOK_SECRET)
     4. if event.type == "checkout.session.completed":
          найти Payment по metadata.payment_id
-         activate_paid_subscription(...)
+         apply_successful_payment(...)
          process_payment_for_referral(...)
          send_email
     """

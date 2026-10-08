@@ -1,51 +1,48 @@
-"""Billing endpoints (internal)."""
+"""Billing endpoints (internal): баланс и пополнение."""
 from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config import settings
 from database import get_db
 from dependencies import CurrentUser
 from modules.billing import service as billing_service
 from modules.billing.schemas import (
+    BalancePublic,
+    BalanceTransactionPublic,
     PaymentPublic,
-    PlanPublic,
-    SubscribeRequest,
-    SubscribeResponse,
-    SubscriptionPublic,
+    TopupRequest,
+    TopupResponse,
 )
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
-
-@router.get("/plans", response_model=list[PlanPublic])
-async def list_plans(db: Annotated[AsyncSession, Depends(get_db)]):
-    plans = await billing_service.list_plans(db)
-    return [PlanPublic.model_validate(p) for p in plans]
+TOPUP_PRESETS = [300, 500, 1000, 3000]
 
 
-@router.get("/subscription", response_model=SubscriptionPublic | None)
-async def get_subscription(
-    user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]
-):
-    sub = await billing_service.get_user_subscription(db, user.id)
-    if sub is None:
-        return None
-    return SubscriptionPublic.model_validate(sub)
+@router.get("/balance", response_model=BalancePublic)
+async def get_balance(user: CurrentUser):
+    return BalancePublic(
+        balance=user.balance,
+        topup_min=settings.topup_min_amount,
+        topup_max=settings.topup_max_amount,
+        topup_presets=TOPUP_PRESETS,
+    )
 
 
-@router.post("/subscribe", response_model=SubscribeResponse)
-async def subscribe(
-    payload: SubscribeRequest,
+@router.post("/topup", response_model=TopupResponse)
+async def topup(
+    payload: TopupRequest,
     user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    url, payment = await billing_service.create_payment_for_plan(
-        db, user, payload.plan_id, payload.provider
+    url, payment = await billing_service.create_topup_payment(
+        db, user, payload.amount, payload.provider
     )
-    return SubscribeResponse(payment_url=url, payment_id=payment.id)
+    return TopupResponse(payment_url=url, payment_id=payment.id)
 
 
 @router.get("/payments", response_model=list[PaymentPublic])
@@ -56,9 +53,9 @@ async def list_payments(
     return [PaymentPublic.model_validate(p) for p in payments]
 
 
-@router.post("/cancel", response_model=SubscriptionPublic)
-async def cancel(
+@router.get("/transactions", response_model=list[BalanceTransactionPublic])
+async def list_transactions(
     user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]
 ):
-    sub = await billing_service.cancel_subscription(db, user)
-    return SubscriptionPublic.model_validate(sub)
+    items = await billing_service.list_transactions(db, user.id)
+    return [BalanceTransactionPublic.model_validate(t) for t in items]

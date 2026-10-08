@@ -37,8 +37,16 @@ export function formatDateTime(iso?: string | null): string {
   });
 }
 
-export function daysUntil(iso?: string | null): number {
-  if (!iso) return 0;
-  const ms = new Date(iso).getTime() - Date.now();
-  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+/** Сумма в рублях с точностью до копейки, для мелких — до сотых копейки. */
+export function formatRub(amount: number | string): string {
+  const value = typeof amount === "string" ? parseFloat(amount) : amount;
+  if (Number.isNaN(value)) return "—";
+  const abs = Math.abs(value);
+  const digits = abs > 0 && abs < 0.1 ? 4 : 2;
+  return (
+    new Intl.NumberFormat("ru-RU", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: digits,
+    }).format(value) + " ₽"
+  );
 }

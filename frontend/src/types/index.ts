@@ -14,7 +14,7 @@ export interface User {
   role: UserRole;
   is_active: boolean;
   is_email_verified: boolean;
-  trial_ends_at: string | null;
+  balance: string;
   created_at: string;
   profile?: UserProfile | null;
 }
@@ -45,32 +45,6 @@ export interface TokenPair {
   access_token: string;
   refresh_token: string;
   token_type: string;
-}
-
-export type SubscriptionStatus =
-  | "trial"
-  | "active"
-  | "cancelled"
-  | "expired"
-  | "past_due";
-
-export interface Plan {
-  id: UUID;
-  name: string;
-  price: string;
-  currency: string;
-  interval: "month" | "year";
-  features: string[];
-  sort_order: number;
-}
-
-export interface Subscription {
-  id: UUID;
-  plan_id: UUID | null;
-  status: SubscriptionStatus;
-  current_period_start: string;
-  current_period_end: string;
-  cancelled_at: string | null;
 }
 
 export interface Payment {
@@ -121,8 +95,10 @@ export interface ApiKeyCreated extends ApiKey {
 
 export interface AdminStats {
   total_users: number;
-  active_subscriptions: number;
-  mrr: string;
+  revenue: string;
+  ai_spent: string;
+  ai_profit: string;
+  total_balance: string;
   pending_payouts: string;
 }
 
@@ -132,4 +108,65 @@ export interface ReferralUser {
   last_name: string | null;
   status: "registered" | "trial" | "converted";
   created_at: string;
+}
+
+export interface Balance {
+  balance: string;
+  currency: string;
+  topup_min: string;
+  topup_max: string;
+  topup_presets: number[];
+}
+
+export interface BalanceTransaction {
+  id: UUID;
+  amount: string;
+  kind: "topup" | "bonus" | "admin";
+  description: string;
+  created_at: string;
+}
+
+/** Цены за 1 млн токенов, ₽ (для пользователя — уже с наценкой). */
+export interface AiModel {
+  id: string;
+  name: string;
+  description: string;
+  input_price: string;
+  output_price: string;
+}
+
+export interface AiModelAdmin extends AiModel {
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface ChatConfig {
+  enabled: boolean;
+  default_model: string;
+  markup_percent: string;
+  models: AiModel[];
+}
+
+export interface Chat {
+  id: UUID;
+  title: string;
+  model: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatMessage {
+  id: UUID;
+  role: "user" | "assistant";
+  content: string;
+  model: string | null;
+  prompt_tokens: number;
+  completion_tokens: number;
+  cost: string;
+  created_at: string;
+}
+
+export interface ChatUsage {
+  balance: string;
+  total_spent: string;
 }

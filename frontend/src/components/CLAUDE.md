@@ -5,9 +5,10 @@
 - `ui/` — базовые shadcn компоненты (Button, Input, Card, Badge, Dialog,
   Label, Skeleton, Textarea). Стилизуются через CSS-переменные темы.
 - `layout/` — Sidebar, Header, Footer, PublicHeader.
-- `landing/` — секции лендинга (Hero, Features, Pricing, Testimonials,
-  FAQ, CTA).
-- `billing/` — TrialBanner, PlanCard, PaymentHistory.
+- `landing/` — лендинг: `ai/` (AiHero, ChatMockup, AiSections — задачи,
+  как это работает, живая таблица цен, сравнение), FAQ, CTA.
+- `billing/` — PaymentHistory.
+- `chat/` — ChatApp (весь чат), Markdown (рендер ответов).
 - `referrals/` — ReferralWidget, PayoutHistory.
 - `AuthGuard.tsx` — обёртка для защищённых страниц (требует логин,
   опционально требует admin).

@@ -1,14 +1,15 @@
 import Link from "next/link";
 import Image from "next/image";
+import { BRAND_NAME } from "@/lib/brand";
 
 const columns = [
   {
-    title: "Продукт",
+    title: "Сервис",
     links: [
-      { label: "Как начать", href: "/#how-to-start" },
-      { label: "Наставник", href: "/#mentor" },
-      { label: "Примеры", href: "/#examples" },
-      { label: "Курс", href: "/#course" },
+      { label: "Возможности", href: "/#features" },
+      { label: "Как это работает", href: "/#how" },
+      { label: "Модели и цены", href: "/#prices" },
+      { label: "Вопросы", href: "/#faq" },
     ],
   },
   {
@@ -16,15 +17,13 @@ const columns = [
     links: [
       { label: "Войти", href: "/login" },
       { label: "Регистрация", href: "/register" },
+      { label: "Чат", href: "/chat" },
+      { label: "Баланс", href: "/billing" },
     ],
   },
   {
-    title: "Open source",
-    links: [
-      { label: "GitHub", href: "https://github.com/SturtapHab/OpenSaas" },
-      { label: "Skills для агентов", href: "https://github.com/SturtapHab/OpenSaas/tree/main/.claude/skills" },
-      { label: "Автор шаблона", href: "https://t.me/wellcome_ai" },
-    ],
+    title: "Партнёрам",
+    links: [{ label: "Реферальная программа", href: "/referrals" }],
   },
 ];
 
@@ -35,8 +34,8 @@ export function Footer() {
         <div className="grid md:grid-cols-[1.4fr_1fr_1fr_1fr] gap-12 mb-20">
           <div>
             <Link href="/" className="inline-flex items-center gap-2.5 mb-5 no-underline">
-              <Image src="/logo.png" alt="OpenSaaS" width={30} height={30} style={{ borderRadius: 8 }} />
-              <span className="text-[16px] font-medium tracking-tight text-[#16140f]" style={{ fontFamily: "Unbounded, sans-serif" }}>OpenSaaS</span>
+              <Image src="/logo.png" alt={BRAND_NAME} width={30} height={30} style={{ borderRadius: 8 }} />
+              <span className="text-[16px] font-medium tracking-tight text-[#16140f]" style={{ fontFamily: "Unbounded, sans-serif" }}>{BRAND_NAME}</span>
             </Link>
             <p className="text-[14.5px] leading-relaxed text-[#4a463e] max-w-[300px]">
               Открытый шаблон для запуска своего онлайн-бизнеса. Деплой и обучение — через AI-агента.
@@ -69,7 +68,7 @@ export function Footer() {
           className="select-none text-center leading-none"
           style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 600, fontSize: "clamp(3rem, 12.5vw, 11rem)", letterSpacing: "-0.05em", color: "transparent", WebkitTextStroke: "1px rgba(22,20,15,0.18)" }}
         >
-          OpenSaaS
+          {BRAND_NAME}
         </div>
 
         <div className="mt-8 pt-6 flex flex-wrap items-center justify-between gap-3 text-[13px] text-[#857f73]" style={{ borderTop: "1px solid rgba(22,20,15,0.08)" }}>

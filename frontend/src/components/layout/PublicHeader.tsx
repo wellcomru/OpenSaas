@@ -4,16 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
-import { BrandIcon } from "@/components/landing/BrandIcon";
-import { GITHUB_URL } from "@/components/landing/site";
 import { useHasSession } from "@/hooks/useHasSession";
+import { BRAND_NAME } from "@/lib/brand";
 
 const navLinks = [
-  { href: "/#how-to-start", label: "Как начать" },
-  { href: "/#mentor", label: "Наставник" },
-  { href: "/#examples", label: "Примеры" },
-  { href: "/#open-source", label: "Open source" },
-  { href: "/#course", label: "Курс" },
+  { href: "/#features", label: "Возможности" },
+  { href: "/#how", label: "Как это работает" },
+  { href: "/#prices", label: "Модели и цены" },
+  { href: "/#faq", label: "Вопросы" },
 ];
 
 export function PublicHeader() {
@@ -43,8 +41,8 @@ export function PublicHeader() {
         }}
       >
         <Link href="/" className="flex items-center gap-2.5 no-underline" onClick={() => setOpen(false)}>
-          <Image src="/logo.png" alt="OpenSaaS" width={28} height={28} style={{ borderRadius: 8 }} priority />
-          <span className="text-[15px] font-medium tracking-tight text-[#16140f]" style={{ fontFamily: "Unbounded, sans-serif" }}>OpenSaaS</span>
+          <Image src="/logo.png" alt={BRAND_NAME} width={28} height={28} style={{ borderRadius: 8 }} priority />
+          <span className="text-[15px] font-medium tracking-tight text-[#16140f]" style={{ fontFamily: "Unbounded, sans-serif" }}>{BRAND_NAME}</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-7">
@@ -56,18 +54,9 @@ export function PublicHeader() {
         </nav>
 
         <div className="flex items-center gap-1">
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="GitHub"
-            className="hidden sm:inline-flex w-10 h-10 items-center justify-center rounded-full hover:bg-black/[0.05] transition-colors"
-          >
-            <BrandIcon name="github" size={18} color="#16140f" />
-          </a>
           {loggedIn ? (
-            <Link href="/dashboard" className="inline-flex items-center h-10 px-5 rounded-full text-[14px] font-semibold text-white no-underline transition-transform hover:-translate-y-px" style={{ background: "#16140f" }}>
-              Личный кабинет
+            <Link href="/chat" className="inline-flex items-center h-10 px-5 rounded-full text-[14px] font-semibold text-white no-underline transition-transform hover:-translate-y-px" style={{ background: "#16140f" }}>
+              Открыть чат
             </Link>
           ) : (
             <>
@@ -75,7 +64,7 @@ export function PublicHeader() {
                 Войти
               </Link>
               <Link href="/register" className="inline-flex items-center h-10 px-5 rounded-full text-[14px] font-semibold text-white no-underline transition-transform hover:-translate-y-px" style={{ background: "#16140f" }}>
-                Регистрация
+                Начать
               </Link>
             </>
           )}
@@ -101,8 +90,8 @@ export function PublicHeader() {
               {label}
             </Link>
           ))}
-          <Link href={loggedIn ? "/dashboard" : "/login"} onClick={() => setOpen(false)} className="px-4 py-3 rounded-2xl text-[16px] text-[#4a463e] no-underline hover:bg-black/[0.04]">
-            {loggedIn ? "Личный кабинет" : "Войти"}
+          <Link href={loggedIn ? "/chat" : "/login"} onClick={() => setOpen(false)} className="px-4 py-3 rounded-2xl text-[16px] text-[#4a463e] no-underline hover:bg-black/[0.04]">
+            {loggedIn ? "Открыть чат" : "Войти"}
           </Link>
         </nav>
       )}

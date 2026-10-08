@@ -14,7 +14,7 @@
 ## Модели
 
 - **User**: email (uniq), hashed_password, role, is_active, is_email_verified,
-  trial_ends_at, referred_by_id (self FK)
+  balance (₽), referred_by_id (self FK); trial_ends_at не используется
 - **UserProfile** (1:1 с User): first_name, last_name, avatar_url
 - **EmailVerificationToken**: uuid hex, expires +24h, is_used
 - **PasswordResetToken**: uuid hex, expires +1h, is_used
@@ -24,7 +24,7 @@
 - При регистрации:
   1. Создаём User (is_email_verified=False)
   2. Создаём UserProfile (пустой)
-  3. Создаём trial Subscription на TRIAL_DAYS дней
+  3. Если WELCOME_BONUS > 0 — зачисляем бонус на баланс
   4. Создаём EmailVerificationToken и шлём письмо
   5. Если есть `referral_code` — привязываем (см. modules/referrals)
 - JWT: `access` короткий (30 мин), `refresh` длинный (30 дней)
@@ -45,7 +45,7 @@ POST /api/v1/auth/reset-password
 
 ## Зависимости
 
-- `modules.billing.models.Subscription` (создаётся при регистрации)
+- `modules.billing.service.credit` (приветственный бонус)
 - `modules.referrals.service.attach_referral` (опционально)
 - `modules.email.service` (отправка писем)
 

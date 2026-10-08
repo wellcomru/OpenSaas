@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { AdminStats, Payment, User } from "@/types";
+import type { AdminStats, AiModelAdmin, Payment, User } from "@/types";
 
 export interface AdminReferralPayout {
   id: string;
@@ -79,6 +79,29 @@ export const adminApi = {
     const r = await apiClient.patch(
       `/api/v1/admin/referrals/payouts/${id}/reject`,
     );
+    return r.data;
+  },
+
+  async adjustBalance(userId: string, amount: number, comment: string): Promise<User> {
+    const r = await apiClient.post(`/api/v1/admin/users/${userId}/balance`, {
+      amount,
+      comment,
+    });
+    return r.data;
+  },
+
+  async listAiModels(): Promise<AiModelAdmin[]> {
+    const r = await apiClient.get("/api/v1/admin/ai-models");
+    return r.data;
+  },
+
+  async createAiModel(data: Omit<AiModelAdmin, "sort_order"> & { sort_order?: number }): Promise<AiModelAdmin> {
+    const r = await apiClient.post("/api/v1/admin/ai-models", data);
+    return r.data;
+  },
+
+  async updateAiModel(id: string, data: Partial<Omit<AiModelAdmin, "id">>): Promise<AiModelAdmin> {
+    const r = await apiClient.patch(`/api/v1/admin/ai-models/${id}`, data);
     return r.data;
   },
 };

@@ -35,7 +35,6 @@ PostgreSQL fallback (таблица `rate_limit_entries`).
 - `get_current_user` (`CurrentUser`) — JWT auth, читает заголовок
   `Authorization: Bearer <access>`
 - `require_admin` (`AdminUser`) — проверка `role == "admin"`
-- `require_active_subscription` (`ActiveSubscription`) — trial/active
 - `get_api_key_user` (`ApiKeyUser`) — для публичного API
 
 ### Auth
@@ -46,15 +45,16 @@ PostgreSQL fallback (таблица `rate_limit_entries`).
 - При истечении access токена фронтенд автоматически обновляет
   через `/auth/refresh` (см. `frontend/src/api/client.ts`)
 
-### Биллинг flow
+### Баланс и чат с ИИ
 
-1. Регистрация → trial subscription на TRIAL_DAYS дней
-2. `POST /billing/subscribe {plan_id, provider}` →
-   создаётся `Payment(pending)` + ссылка на провайдера
-3. Юзер платит → провайдер шлёт webhook
-4. Webhook проверяет подпись → `Payment.status = success` →
-   `activate_paid_subscription` → notification + email
-5. Если есть реферер → `ReferralPayout(pending)` + уведомление
+1. Регистрация → баланс 0 ₽ (или WELCOME_BONUS)
+2. `POST /billing/topup {amount, provider}` → `Payment(pending)` + ссылка на Робокассу
+3. Юзер платит → webhook проверяет подпись → `Payment.status = success` →
+   сумма зачисляется на `users.balance` (+ запись в `balance_transactions`)
+4. Если есть реферер → `ReferralPayout(pending)` на REFERRAL_COMMISSION_PERCENT
+5. `POST /chat/send` → ответ модели потоком (SSE) через AI Gateway →
+   списание `(токены × себестоимость) × (1 + AI_MARKUP_PERCENT/100)` с баланса.
+   Подробности — `backend/modules/ai_chat/CLAUDE.md`
 
 ## Frontend (Next.js)
 

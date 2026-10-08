@@ -1,17 +1,21 @@
 """Admin endpoints (internal, role=admin required)."""
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from database import get_db
 from dependencies import AdminUser, require_admin
 from modules.admin import service as admin_service
+from modules.ai_chat import service as chat_service
+from modules.ai_chat.models import AiModel
+from modules.ai_chat.schemas import AiModelAdmin, AiModelCreate, AiModelUpdate
 from modules.auth.models import UserRole
 from modules.auth.schemas import UserPublic
 from modules.email import service as email_service
@@ -25,6 +29,12 @@ router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(requir
 
 class RoleUpdate(BaseModel):
     role: UserRole
+
+
+class BalanceAdjust(BaseModel):
+    # Положительная сумма — начислить, отрицательная — списать.
+    amount: Decimal = Field(max_digits=12, decimal_places=2)
+    comment: str = Field(default="", max_length=255)
 
 
 @router.post("/email/test")
@@ -152,3 +162,53 @@ async def reject_payout(
         db, payout_id, ReferralPayoutStatus.REJECTED
     )
     return AdminReferralPayoutPublic.model_validate(p)
+
+
+@router.post("/users/{user_id}/balance", response_model=UserPublic)
+async def adjust_balance(
+    user_id: UUID,
+    payload: BalanceAdjust,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    if payload.amount == 0:
+        raise HTTPException(status_code=400, detail="Сумма не может быть нулевой")
+    user = await admin_service.adjust_balance(db, user_id, payload.amount, payload.comment)
+    return UserPublic.model_validate(user)
+
+
+# === Модели ИИ и их себестоимость ===
+
+
+@router.get("/ai-models", response_model=list[AiModelAdmin])
+async def list_ai_models(db: Annotated[AsyncSession, Depends(get_db)]):
+    return [
+        AiModelAdmin.model_validate(m)
+        for m in await chat_service.list_models(db, include_inactive=True)
+    ]
+
+
+@router.post("/ai-models", response_model=AiModelAdmin)
+async def create_ai_model(
+    payload: AiModelCreate, db: Annotated[AsyncSession, Depends(get_db)]
+):
+    if await db.get(AiModel, payload.id):
+        raise HTTPException(status_code=409, detail="Такая модель уже есть")
+    model = AiModel(**payload.model_dump())
+    db.add(model)
+    await db.commit()
+    return AiModelAdmin.model_validate(model)
+
+
+@router.patch("/ai-models/{model_id:path}", response_model=AiModelAdmin)
+async def update_ai_model(
+    model_id: str,
+    payload: AiModelUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    model = await db.get(AiModel, model_id)
+    if model is None:
+        raise HTTPException(status_code=404, detail="Модель не найдена")
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(model, key, value)
+    await db.commit()
+    return AiModelAdmin.model_validate(model)

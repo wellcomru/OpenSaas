@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { BrandIcon } from "./BrandIcon";
-import { PromptLine } from "./CopyButton";
 import { Reveal } from "./Reveal";
-import { COURSE_URL, DEPLOY_PROMPT, GITHUB_URL } from "./site";
 
 export function CTA() {
   return (
@@ -17,27 +14,22 @@ export function CTA() {
             <div aria-hidden className="absolute inset-0 lx-grid-lines opacity-40 pointer-events-none" style={{ maskImage: "radial-gradient(ellipse 60% 60% at 50% 40%, #000, transparent 80%)", WebkitMaskImage: "radial-gradient(ellipse 60% 60% at 50% 40%, #000, transparent 80%)" }} />
             <div className="relative mx-auto" style={{ maxWidth: 860 }}>
               <h2 className="lx-display" style={{ fontSize: "clamp(2.1rem, 4.6vw, 4rem)", lineHeight: 1.05 }}>
-                Каждый, у кого есть идея, <em>заслуживает её запустить</em>
+                Задайте первый вопрос <em>прямо сейчас</em>
               </h2>
-              <p className="lx-lead mx-auto mt-7" style={{ maxWidth: 540 }}>
-                Заберите код, дайте агенту ключ — и через 15 минут у вас свой работающий сервис.
+              <p className="lx-lead mx-auto mt-7" style={{ maxWidth: 560 }}>
+                Регистрация за минуту, пополнение от 100 ₽. Все нейросети в одном окне и оплата только за ответы.
               </p>
 
               <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-                <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="lx-btn lx-btn-ink">
-                  <BrandIcon name="github" size={17} color="#fff" />
-                  Забрать бесплатно
-                </a>
-                <Link href={COURSE_URL} className="lx-btn lx-btn-ghost">
-                  Курс по развитию <ArrowRight size={16} />
+                <Link href="/register" className="lx-btn lx-btn-ink">
+                  Начать общение <ArrowRight size={16} />
                 </Link>
+                <a href="#prices" className="lx-btn lx-btn-ghost">
+                  Посмотреть цены
+                </a>
               </div>
 
-              <div className="mt-10 mx-auto" style={{ maxWidth: 560 }}>
-                <PromptLine text={DEPLOY_PROMPT} />
-              </div>
-
-              <p className="mt-6 text-[13px] text-[var(--lx-ink-3)]">Open source · MIT · Без подписки на шаблон</p>
+              <p className="mt-6 text-[13px] text-[var(--lx-ink-3)]">Без подписки · Без VPN · Оплата в рублях</p>
             </div>
           </div>
         </Reveal>

@@ -8,6 +8,7 @@ from api.v1.internal import (
     api_keys as api_keys_router,
     auth as auth_router,
     billing as billing_router,
+    chat as chat_router,
     referrals as referrals_router,
     users as users_router,
 )
@@ -19,6 +20,7 @@ api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth_router.router)
 api_router.include_router(users_router.router)
 api_router.include_router(billing_router.router)
+api_router.include_router(chat_router.router)
 api_router.include_router(referrals_router.router)
 api_router.include_router(api_keys_router.router)
 api_router.include_router(admin_router.router)

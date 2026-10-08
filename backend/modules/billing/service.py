@@ -1,67 +1,90 @@
-"""Бизнес-логика биллинга."""
+"""Бизнес-логика биллинга: баланс в рублях и его пополнение.
+
+Баланс меняется только атомарным UPDATE users SET balance = balance ± x,
+чтобы параллельные запросы не затирали друг друга.
+"""
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Sequence
 from uuid import UUID
 
-from fastapi import HTTPException, status
-from sqlalchemy import select
+from fastapi import HTTPException
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from modules.auth.models import User
 from modules.billing import robokassa, stripe as stripe_mod
 from modules.billing.models import (
+    BalanceTransaction,
+    BalanceTransactionKind,
     Payment,
     PaymentProvider,
     PaymentStatus,
-    Plan,
-    PlanInterval,
-    Subscription,
-    SubscriptionStatus,
 )
 
 
-async def list_plans(db: AsyncSession) -> Sequence[Plan]:
-    return (
-        await db.scalars(
-            select(Plan).where(Plan.is_active == True).order_by(Plan.sort_order)  # noqa: E712
+async def add_balance(db: AsyncSession, user_id: UUID, amount: Decimal) -> Decimal:
+    """Прибавить (или отнять, если amount < 0) и вернуть новый баланс. Без commit."""
+    new_balance = await db.scalar(
+        update(User)
+        .where(User.id == user_id)
+        .values(balance=User.balance + amount)
+        .returning(User.balance)
+    )
+    return Decimal(new_balance)
+
+
+async def credit(
+    db: AsyncSession,
+    user_id: UUID,
+    amount: Decimal,
+    kind: BalanceTransactionKind,
+    description: str,
+    payment_id: UUID | None = None,
+) -> Decimal:
+    """Зачислить деньги с записью в историю пополнений. Без commit."""
+    db.add(
+        BalanceTransaction(
+            user_id=user_id,
+            amount=amount,
+            kind=kind.value,
+            description=description,
+            payment_id=payment_id,
         )
-    ).all()
+    )
+    return await add_balance(db, user_id, amount)
 
 
-async def get_user_subscription(db: AsyncSession, user_id: UUID) -> Subscription | None:
-    return await db.scalar(select(Subscription).where(Subscription.user_id == user_id))
-
-
-async def create_payment_for_plan(
-    db: AsyncSession, user: User, plan_id: UUID, provider: str
+async def create_topup_payment(
+    db: AsyncSession, user: User, amount: Decimal, provider: str
 ) -> tuple[str, Payment]:
-    plan = await db.get(Plan, plan_id)
-    if plan is None or not plan.is_active:
-        raise HTTPException(status_code=404, detail="Plan not found")
+    amount = amount.quantize(Decimal("0.01"))
+    if amount < settings.topup_min_amount or amount > settings.topup_max_amount:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Сумма пополнения от {settings.topup_min_amount:.0f} "
+                f"до {settings.topup_max_amount:.0f} ₽"
+            ),
+        )
 
     try:
         provider_enum = PaymentProvider(provider)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid provider")
 
-    sub = await get_user_subscription(db, user.id)
-
     numeric_inv_id = str(int(time.time() * 1000))
-
     payment = Payment(
         user_id=user.id,
-        subscription_id=sub.id if sub else None,
-        amount=plan.price,
-        currency=plan.currency,
+        amount=amount,
+        currency="RUB",
         status=PaymentStatus.PENDING,
         provider=provider_enum,
         provider_payment_id=numeric_inv_id,
-        payment_metadata={"plan_id": str(plan.id), "plan_name": plan.name},
+        payment_metadata={"kind": "topup"},
     )
     db.add(payment)
     await db.flush()
@@ -69,12 +92,12 @@ async def create_payment_for_plan(
     if provider_enum == PaymentProvider.ROBOKASSA:
         url = robokassa.build_payment_url(
             inv_id=numeric_inv_id,
-            amount=plan.price,
-            description=f"{settings.app_name} — {plan.name}",
+            amount=amount,
+            description=f"{settings.app_name}: пополнение баланса",
             user_email=user.email,
         )
     elif provider_enum == PaymentProvider.STRIPE:
-        url = stripe_mod.build_checkout_url(str(plan.id), plan.price, user.email)
+        url = stripe_mod.build_checkout_url(str(payment.id), amount, user.email)
     else:
         raise HTTPException(status_code=400, detail="Unsupported provider")
 
@@ -83,14 +106,17 @@ async def create_payment_for_plan(
     return url, payment
 
 
-async def cancel_subscription(db: AsyncSession, user: User) -> Subscription:
-    sub = await get_user_subscription(db, user.id)
-    if sub is None:
-        raise HTTPException(status_code=404, detail="No subscription")
-    sub.cancelled_at = datetime.now(timezone.utc)
-    sub.status = SubscriptionStatus.CANCELLED
-    await db.commit()
-    return sub
+async def apply_successful_payment(db: AsyncSession, payment: Payment) -> Decimal:
+    """Зачислить оплаченную сумму на баланс. Вызывается webhook-ом. Без commit."""
+    payment.status = PaymentStatus.SUCCESS
+    return await credit(
+        db,
+        payment.user_id,
+        Decimal(payment.amount),
+        BalanceTransactionKind.TOPUP,
+        "Пополнение баланса",
+        payment_id=payment.id,
+    )
 
 
 async def list_user_payments(db: AsyncSession, user: User) -> Sequence[Payment]:
@@ -103,49 +129,14 @@ async def list_user_payments(db: AsyncSession, user: User) -> Sequence[Payment]:
     ).all()
 
 
-async def activate_paid_subscription(
-    db: AsyncSession, payment: Payment
-) -> Subscription:
-    """Активирует подписку после успешной оплаты.
-
-    Используется webhook-ами. Берёт plan_id из payment.metadata.
-    """
-    plan_id_raw = (payment.payment_metadata or {}).get("plan_id")
-    if not plan_id_raw:
-        raise HTTPException(
-            status_code=500, detail="Payment metadata missing plan_id"
+async def list_transactions(
+    db: AsyncSession, user_id: UUID, limit: int = 100
+) -> Sequence[BalanceTransaction]:
+    return (
+        await db.scalars(
+            select(BalanceTransaction)
+            .where(BalanceTransaction.user_id == user_id)
+            .order_by(BalanceTransaction.created_at.desc())
+            .limit(limit)
         )
-
-    plan = await db.get(Plan, UUID(plan_id_raw))
-    if plan is None:
-        raise HTTPException(status_code=404, detail="Plan not found")
-
-    sub = await db.scalar(
-        select(Subscription).where(Subscription.user_id == payment.user_id)
-    )
-    now = datetime.now(timezone.utc)
-    period = (
-        timedelta(days=30)
-        if plan.interval == PlanInterval.MONTH
-        else timedelta(days=365)
-    )
-
-    if sub is None:
-        sub = Subscription(
-            user_id=payment.user_id,
-            plan_id=plan.id,
-            status=SubscriptionStatus.ACTIVE,
-            current_period_start=now,
-            current_period_end=now + period,
-        )
-        db.add(sub)
-    else:
-        sub.plan_id = plan.id
-        sub.status = SubscriptionStatus.ACTIVE
-        sub.current_period_start = now
-        sub.current_period_end = now + period
-        sub.cancelled_at = None
-
-    payment.subscription_id = sub.id
-    await db.flush()
-    return sub
+    ).all()

@@ -2,64 +2,59 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpRight, CreditCard, Gift, Settings, TrendingUp, Users } from "lucide-react";
+import { ArrowUpRight, Gift, MessageSquare, Settings, Sparkles, TrendingDown, Wallet } from "lucide-react";
 
-import { TrialBanner } from "@/components/billing/TrialBanner";
 import { EmailBanner } from "@/components/EmailBanner";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { referralsApi } from "@/api/referrals";
-import { formatMoney } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { chatApi } from "@/api/chat";
+import { formatDateTime, formatRub } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 
 const quickActions = [
-  { href: "/billing", icon: CreditCard, label: "Подписка", hint: "Тариф и платежи" },
-  { href: "/referrals", icon: Gift, label: "Рефералы", hint: "Приглашайте и зарабатывайте" },
+  { href: "/chat", icon: MessageSquare, label: "Новый чат", hint: "Спросить ИИ" },
+  { href: "/billing", icon: Wallet, label: "Пополнить", hint: "Карта или СБП" },
+  { href: "/referrals", icon: Gift, label: "Рефералы", hint: "Приглашайте друзей" },
   { href: "/settings", icon: Settings, label: "Настройки", hint: "Профиль и пароль" },
 ];
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
-  const { data: stats } = useQuery({
-    queryKey: ["referrals-stats"],
-    queryFn: () => referralsApi.stats(),
-  });
+  const { data: usage } = useQuery({ queryKey: ["chat-usage"], queryFn: () => chatApi.usage() });
+  const { data: chats } = useQuery({ queryKey: ["chats"], queryFn: () => chatApi.listChats() });
 
   const firstName = user?.profile?.first_name;
 
   const statCards = [
-    {
-      label: "Заработано на рефералах",
-      value: formatMoney(stats?.total_earned ?? 0),
-      sub: `Приглашено: ${stats?.total_referred ?? 0}`,
-      icon: TrendingUp,
-    },
-    {
-      label: "Ожидает выплаты",
-      value: formatMoney(stats?.pending_payout ?? 0),
-      sub: `Оплатили: ${stats?.converted ?? 0}`,
-      icon: Users,
-    },
+    { label: "Баланс", value: usage ? formatRub(usage.balance) : "…", icon: Wallet, href: "/billing" },
+    { label: "Потрачено на ИИ", value: usage ? formatRub(usage.total_spent) : "…", icon: TrendingDown, href: "/chat" },
   ];
 
   return (
     <>
       <PageHeader
         title={firstName ? `Здравствуйте, ${firstName}` : "Главная"}
-        description="Сводка по вашему аккаунту."
+        description="Баланс, последние чаты и быстрые действия."
+        actions={
+          <Link href="/chat">
+            <Button>
+              <Sparkles className="h-4 w-4" />
+              Открыть чат
+            </Button>
+          </Link>
+        }
       />
 
-      <div className="space-y-3">
-        <EmailBanner />
-        <TrialBanner />
-      </div>
+      <EmailBanner />
 
       <div className="grid gap-4 md:grid-cols-2">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
-            <div
+            <Link
               key={card.label}
-              className="rounded-2xl border border-border bg-card p-6 shadow-[0_1px_2px_rgba(22,20,15,.04),0_12px_32px_-16px_rgba(22,20,15,.12)]"
+              href={card.href}
+              className="rounded-2xl border border-border bg-card p-6 no-underline shadow-[0_1px_2px_rgba(22,20,15,.04),0_12px_32px_-16px_rgba(22,20,15,.12)] transition-all hover:-translate-y-0.5"
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{card.label}</span>
@@ -67,18 +62,15 @@ export default function DashboardPage() {
                   <Icon className="h-4 w-4" strokeWidth={1.75} />
                 </span>
               </div>
-              <div className="mt-4 font-display text-[32px] leading-none text-foreground">
-                {card.value}
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">{card.sub}</div>
-            </div>
+              <div className="mt-4 font-display text-[32px] leading-none text-foreground">{card.value}</div>
+            </Link>
           );
         })}
       </div>
 
       <div>
         <h2 className="mb-4 font-display text-lg">Быстрые действия</h2>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((q) => {
             const Icon = q.icon;
             return (
@@ -100,6 +92,24 @@ export default function DashboardPage() {
           })}
         </div>
       </div>
+
+      {chats && chats.length > 0 && (
+        <div>
+          <h2 className="mb-4 font-display text-lg">Последние чаты</h2>
+          <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+            {chats.slice(0, 5).map((c) => (
+              <Link
+                key={c.id}
+                href={`/chat?c=${c.id}`}
+                className="flex items-center justify-between gap-4 px-5 py-3.5 text-sm no-underline transition-colors hover:bg-secondary/50"
+              >
+                <span className="truncate text-foreground">{c.title}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">{formatDateTime(c.updated_at)}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }

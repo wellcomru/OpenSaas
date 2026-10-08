@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import { Providers } from "@/components/Providers";
+import { BRAND_NAME } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: "OpenSaaS — свой онлайн-бизнес за 15 минут с Claude Code или Codex",
+  title: `${BRAND_NAME} — ChatGPT, Claude, Gemini и DeepSeek в одном чате без подписки`,
   description:
-    "Открытый SaaS-шаблон (MIT) на FastAPI + Next.js. Отдайте AI-агенту ключ Timeweb — он сам задеплоит сервис с регистрацией, оплатой через Робокассу, кабинетом и админкой.",
+    "Все лучшие нейросети в одном окне. Без VPN и зарубежных карт: пополняйте баланс в рублях от 100 ₽ и платите только за ответы.",
   icons: {
     icon: "/favicon/favicon.ico",
     apple: "/favicon/apple-touch-icon.png",

@@ -9,23 +9,25 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config import settings
 from modules.auth.models import User, UserRole
-from modules.billing.models import Payment, PaymentStatus, Subscription, SubscriptionStatus
+from modules.ai_chat.models import ChatMessage
+from modules.billing.models import BalanceTransactionKind, Payment, PaymentStatus
+from modules.billing.service import credit
 from modules.referrals.models import ReferralPayout, ReferralPayoutStatus
 
 
 async def stats(db: AsyncSession) -> dict:
     total_users = await db.scalar(select(func.count(User.id)))
-    active_subs = await db.scalar(
-        select(func.count(Subscription.id)).where(
-            Subscription.status == SubscriptionStatus.ACTIVE
-        )
-    )
-    mrr = await db.scalar(
+    revenue = await db.scalar(
         select(func.coalesce(func.sum(Payment.amount), 0)).where(
             Payment.status == PaymentStatus.SUCCESS
         )
     )
+    ai_spent = Decimal(
+        await db.scalar(select(func.coalesce(func.sum(ChatMessage.cost), 0))) or 0
+    )
+    total_balance = await db.scalar(select(func.coalesce(func.sum(User.balance), 0)))
     pending_payouts = await db.scalar(
         select(func.coalesce(func.sum(ReferralPayout.amount), 0)).where(
             ReferralPayout.status.in_(
@@ -33,11 +35,15 @@ async def stats(db: AsyncSession) -> dict:
             )
         )
     )
+    markup = 1 + settings.ai_markup_percent / 100
 
     return {
         "total_users": total_users or 0,
-        "active_subscriptions": active_subs or 0,
-        "mrr": Decimal(mrr or 0),
+        "revenue": Decimal(revenue or 0),
+        "ai_spent": ai_spent,
+        # Прибыль с ИИ: списано с пользователей минус себестоимость.
+        "ai_profit": (ai_spent - ai_spent / markup).quantize(Decimal("0.01")),
+        "total_balance": Decimal(total_balance or 0),
         "pending_payouts": Decimal(pending_payouts or 0),
     }
 
@@ -81,3 +87,18 @@ async def list_payments(db: AsyncSession, limit: int = 100) -> Sequence[Payment]
             select(Payment).order_by(Payment.created_at.desc()).limit(limit)
         )
     ).all()
+
+
+async def adjust_balance(
+    db: AsyncSession, user_id: UUID, amount: Decimal, comment: str
+) -> User:
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    await credit(
+        db, user.id, amount, BalanceTransactionKind.ADMIN,
+        comment or "Корректировка администратором",
+    )
+    await db.commit()
+    await db.refresh(user)
+    return user

@@ -79,22 +79,32 @@ class Settings(BaseSettings):
     cors_origins: str = Field(default="http://localhost:3000")
 
     # === Бизнес-логика ===
-    trial_days: int = Field(default=3)
-    referral_commission_percent: int = Field(default=20)
+    # Процент рефереру с каждого пополнения. Наценка на ИИ 25%, поэтому
+    # большой процент съест всю прибыль.
+    referral_commission_percent: int = Field(default=5)
 
-    # === Планы подписки ===
-    plan_basic_name: str = Field(default="Basic")
-    plan_basic_price: Decimal = Field(default=Decimal("990"))
-    plan_basic_interval: str = Field(default="month")
-    plan_basic_features: str = Field(
-        default="До 100 запросов в день,Email поддержка,Базовая аналитика"
-    )
+    # === Баланс ===
+    # Бонус на баланс при регистрации, ₽ (0 = без бонуса).
+    welcome_bonus: Decimal = Field(default=Decimal("0"))
+    topup_min_amount: Decimal = Field(default=Decimal("100"))
+    topup_max_amount: Decimal = Field(default=Decimal("100000"))
 
-    plan_pro_name: str = Field(default="Pro")
-    plan_pro_price: Decimal = Field(default=Decimal("2990"))
-    plan_pro_interval: str = Field(default="month")
-    plan_pro_features: str = Field(
-        default="Безлимит запросов,Приоритетная поддержка,API доступ,Расширенная аналитика"
+    # === AI Gateway (OpenAI-совместимый API, по умолчанию Timeweb) ===
+    ai_gateway_url: str = Field(default="https://api.timeweb.ai/v1")
+    ai_gateway_key: str = Field(default="")
+    # Наценка к себестоимости токенов, %.
+    ai_markup_percent: Decimal = Field(default=Decimal("25"))
+    # Модель по умолчанию для нового чата.
+    ai_default_model: str = Field(default="openai/gpt-5.4-mini")
+    # Сколько последних сообщений чата отправлять модели как контекст.
+    ai_context_messages: int = Field(default=30)
+    # Потолок длины одного ответа, токенов.
+    ai_max_output_tokens: int = Field(default=8000)
+    ai_system_prompt: str = Field(
+        default=(
+            "Ты полезный ИИ-ассистент. Отвечай на языке пользователя, "
+            "по делу и понятно. Используй Markdown для списков, таблиц и кода."
+        )
     )
 
     @model_validator(mode="after")
@@ -131,12 +141,8 @@ class Settings(BaseSettings):
         return bool(self.redis_url)
 
     @property
-    def plan_basic_features_list(self) -> list[str]:
-        return [f.strip() for f in self.plan_basic_features.split(",") if f.strip()]
-
-    @property
-    def plan_pro_features_list(self) -> list[str]:
-        return [f.strip() for f in self.plan_pro_features.split(",") if f.strip()]
+    def ai_enabled(self) -> bool:
+        return bool(self.ai_gateway_key)
 
 
 @lru_cache

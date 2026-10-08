@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -67,7 +68,7 @@ class UserPublic(BaseModel):
     role: str
     is_active: bool
     is_email_verified: bool
-    trial_ends_at: datetime | None = None
+    balance: Decimal = Decimal("0")
     created_at: datetime
 
 

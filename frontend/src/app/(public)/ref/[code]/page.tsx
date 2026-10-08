@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
+import { BRAND_NAME } from "@/lib/brand";
 
 export default function ReferralLandingPage() {
   const params = useParams<{ code: string }>();
@@ -25,10 +26,10 @@ export default function ReferralLandingPage() {
           Реферальное приглашение
         </div>
         <h1 className="mt-3 text-3xl font-bold">
-          Вас пригласили в OpenSaaS
+          Вас пригласили в {BRAND_NAME}
         </h1>
         <p className="mt-3 text-muted-foreground">
-          Зарегистрируйтесь по коду <span className="font-mono font-medium">{code}</span> и получите 3 дня бесплатного триала.
+          Зарегистрируйтесь по коду <span className="font-mono font-medium">{code}</span> и общайтесь с ChatGPT, Claude, Gemini и другими нейросетями в одном чате.
         </p>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2">

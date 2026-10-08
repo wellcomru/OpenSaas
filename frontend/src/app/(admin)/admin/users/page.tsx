@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { adminApi } from "@/api/admin";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatRub } from "@/lib/utils";
 
 const PAGE_LIMIT = 20;
 
@@ -59,6 +59,28 @@ export default function AdminUsersPage() {
     mutationFn: (id: string) => adminApi.blockUser(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
+
+  const adjust = useMutation({
+    mutationFn: ({ id, amount, comment }: { id: string; amount: number; comment: string }) =>
+      adminApi.adjustBalance(id, amount, comment),
+    onSuccess: (u) => {
+      toast.success(`Баланс ${u.email}: ${formatRub(u.balance)}`);
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: () => toast.error("Не удалось изменить баланс"),
+  });
+
+  const askAdjust = (id: string, email: string) => {
+    const raw = window.prompt(`Сколько начислить ${email}? Для списания укажите минус, например -100`);
+    if (!raw) return;
+    const amount = parseFloat(raw.replace(",", "."));
+    if (Number.isNaN(amount) || amount === 0) {
+      toast.error("Введите число, например 100 или -100");
+      return;
+    }
+    const comment = window.prompt("Комментарий (увидит пользователь)", amount > 0 ? "Бонус" : "") ?? "";
+    adjust.mutate({ id, amount, comment });
+  };
 
   const unblock = useMutation({
     mutationFn: (id: string) => adminApi.unblockUser(id),
@@ -117,10 +139,12 @@ export default function AdminUsersPage() {
             />
           ) : (
             <>
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs uppercase text-muted-foreground">
                     <th className="px-6 py-3">Email</th>
+                    <th className="px-6 py-3">Баланс</th>
                     <th className="px-6 py-3">Роль</th>
                     <th className="px-6 py-3">Email подтв.</th>
                     <th className="px-6 py-3">Активен</th>
@@ -132,6 +156,7 @@ export default function AdminUsersPage() {
                   {filtered.map((u) => (
                     <tr key={u.id} className="border-b last:border-0">
                       <td className="px-6 py-3 font-medium">{u.email}</td>
+                      <td className="px-6 py-3 whitespace-nowrap">{formatRub(u.balance)}</td>
                       <td className="px-6 py-3">
                         <Badge variant="secondary">{u.role}</Badge>
                       </td>
@@ -152,6 +177,9 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-6 py-3 text-right">
                         <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" onClick={() => askAdjust(u.id, u.email)}>
+                            Баланс ±
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
@@ -187,6 +215,7 @@ export default function AdminUsersPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
               <Pagination
                 page={page}
                 limit={PAGE_LIMIT}

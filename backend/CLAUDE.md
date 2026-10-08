@@ -19,11 +19,11 @@ backend/
 ├── main.py              # FastAPI app, lifespan, CORS, /health
 ├── config.py            # pydantic-settings (читает .env)
 ├── database.py          # async engine, Base, get_db
-├── dependencies.py      # CurrentUser, AdminUser, ActiveSubscription
+├── dependencies.py      # CurrentUser, AdminUser
 ├── public_url.py        # app_url(): APP_URL или адрес из Host запроса
 ├── models_registry.py   # импорт всех моделей для Alembic
 │
-├── alembic/             # миграции 0001-0007
+├── alembic/             # миграции 0001-0011
 │
 ├── api/v1/
 │   ├── router.py        # сборка всех роутов
@@ -34,15 +34,14 @@ backend/
 │   ├── auth/            # регистрация, логин, JWT, email-токены
 │   ├── users/           # профиль, смена пароля
 │   ├── email/           # SMTP + Jinja2 шаблоны
-│   ├── billing/         # планы, подписки, платежи, Robokassa/Stripe
+│   ├── billing/         # баланс, пополнение, платежи, Robokassa/Stripe
+│   ├── ai_chat/         # чат с ИИ через AI Gateway, цены моделей, списание
 │   ├── referrals/       # коды, ссылки, выплаты
 │   ├── api_keys/        # генерация/проверка + middleware
-│   ├── notifications/   # in-app уведомления
 │   ├── admin/           # админские операции
-│   ├── rate_limit/      # Redis или PostgreSQL fallback
-│   └── demo_notes/      # пример пользовательского модуля
+│   └── rate_limit/      # Redis или PostgreSQL fallback
 │
-└── scripts/create_admin.py   # idempotent: создаёт админа и дефолтные планы
+└── scripts/create_admin.py   # idempotent: создаёт админа
 ```
 
 ## Паттерны кода
@@ -58,7 +57,6 @@ async def get_user(db: AsyncSession, user_id: UUID) -> User | None:
 
 - `CurrentUser` — текущий пользователь по JWT
 - `AdminUser` — то же, но требует `role == "admin"`
-- `ActiveSubscription` — проверяет, что trial/active не истёк
 - `ApiKeyUser` — для public API (по заголовку Authorization: Bearer osk_...)
 
 ### Роуты
@@ -95,7 +93,7 @@ async def handler(
 4. **Webhook Robokassa** — проверка подписи на `password2`. Никогда не верить
    входным данным без проверки подписи.
 5. **Защита данных пользователя** — в каждом списке/CRUD фильтр по `user_id`.
-   См. `modules/demo_notes/service.py` как пример.
+   См. `modules/ai_chat/service.py` (`get_chat`) как пример.
 6. **Email подтверждение** включается само, когда заданы `SMTP_USER` и
    `SMTP_PASSWORD` (`settings.email_enabled`). Без SMTP регистрация идёт сразу,
    без кода; сброс пароля отвечает 503. С SMTP неподтверждённым нельзя создавать
@@ -127,6 +125,6 @@ alembic downgrade -1
 # Запуск
 uvicorn main:app --reload --port 8000
 
-# Создать админа и дефолтные планы
+# Создать админа
 python scripts/create_admin.py
 ```

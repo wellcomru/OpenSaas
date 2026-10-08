@@ -21,7 +21,6 @@ src/app/
 │
 ├── (public)/               # лендинг и публичные страницы
 │   ├── page.tsx            # /
-│   ├── pricing/page.tsx    # /pricing
 │   └── ref/[code]/page.tsx # /ref/CODE
 │
 ├── (auth)/                 # auth страницы (layout без сайдбара)
@@ -32,22 +31,24 @@ src/app/
 │   ├── forgot-password/page.tsx
 │   └── reset-password/page.tsx
 │
+├── (chat)/                 # чат с ИИ на весь экран (AuthGuard + Sidebar, без отступов)
+│   ├── layout.tsx
+│   └── chat/page.tsx       # /chat?c=<id> — components/chat/ChatApp.tsx
+│
 ├── (dashboard)/            # защищённые страницы (AuthGuard + Sidebar)
 │   ├── layout.tsx
 │   ├── dashboard/page.tsx
-│   ├── billing/page.tsx
+│   ├── billing/page.tsx    # баланс и пополнение
 │   ├── referrals/page.tsx
-│   ├── api-keys/page.tsx
-│   ├── notifications/page.tsx
 │   ├── settings/page.tsx
-│   ├── settings/security/page.tsx
-│   └── demo/page.tsx
+│   └── settings/security/page.tsx
 │
 └── (admin)/                # admin (AuthGuard requireAdmin)
     ├── layout.tsx
     └── admin/
         ├── page.tsx
         ├── users/page.tsx
+        ├── models/page.tsx # цены моделей ИИ
         ├── billing/page.tsx
         └── referrals/page.tsx
 ```
@@ -61,8 +62,8 @@ Route groups в скобках (`(public)`, `(auth)`, `(dashboard)`, `(admin)`)
 
 ```tsx
 const { data, isLoading } = useQuery({
-  queryKey: ["plans"],
-  queryFn: () => billingApi.listPlans(),
+  queryKey: ["balance"],
+  queryFn: () => billingApi.getBalance(),
 });
 
 const mut = useMutation({
@@ -95,7 +96,7 @@ const { register, handleSubmit } = useForm({ resolver: zodResolver(schema) });
 ## Auth flow
 
 1. Юзер логинится → `useAuth.login` → `tokenStorage.set` + Zustand `setUser`
-   → редирект на `/dashboard`.
+   → редирект на `/chat`.
 2. При перезагрузке / повторном открытии вкладки `restoreSession()` в
    `useAuth` (один раз на загрузку): сразу показывает сохранённый профиль
    (`tokenStorage.user`), затем проверяет `usersApi.me()`. Истёкший access
@@ -104,8 +105,8 @@ const { register, handleSubmit } = useForm({ resolver: zodResolver(schema) });
    403/422). Сетевая ошибка или 502/503 во время перезапуска сайта сессию
    не стирают: запрос повторяется, а без сохранённого профиля `AuthGuard`
    показывает «Не удаётся связаться с сервером» с кнопкой «Повторить».
-4. Вошедшего человека `/login` и `/register` отправляют в `/dashboard`
-   (`RedirectIfAuthenticated`), шапка лендинга показывает «Личный кабинет».
+4. Вошедшего человека `/login` и `/register` отправляют в `/chat`
+   (`RedirectIfAuthenticated`), шапка лендинга показывает «Открыть чат».
 5. Защита роутов: `AuthGuard` в `(dashboard)/layout.tsx` и
    `(admin)/layout.tsx` (с `requireAdmin`).
 
@@ -123,6 +124,13 @@ const { register, handleSubmit } = useForm({ resolver: zodResolver(schema) });
    `export const <name>Api = { method() {...} }`.
 2. Каждый метод async и возвращает `.data`.
 3. Типы — в `@/types/index.ts`.
+
+## Чат с ИИ
+
+`api/chat.ts` читает ответ потоком через `fetch` (axios не умеет SSE): события
+`start` / `delta` / `done` / `error`. Истёкший токен обновляется вызовом через
+`apiClient` и запрос повторяется. Markdown ответов — `components/chat/Markdown.tsx`
+(react-markdown + remark-gfm). Название сервиса — `lib/brand.ts`.
 
 ## Никогда
 

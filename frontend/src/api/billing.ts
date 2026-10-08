@@ -1,25 +1,17 @@
 import { apiClient } from "./client";
-import type { Payment, Plan, Subscription } from "@/types";
+import type { Balance, BalanceTransaction, Payment } from "@/types";
 
 export const billingApi = {
-  async listPlans(): Promise<Plan[]> {
-    const r = await apiClient.get("/api/v1/billing/plans");
+  async getBalance(): Promise<Balance> {
+    const r = await apiClient.get("/api/v1/billing/balance");
     return r.data;
   },
 
-  async getSubscription(): Promise<Subscription | null> {
-    const r = await apiClient.get("/api/v1/billing/subscription");
-    return r.data;
-  },
-
-  async subscribe(
-    plan_id: string,
+  async topup(
+    amount: number,
     provider: "robokassa" | "stripe" = "robokassa",
   ): Promise<{ payment_url: string; payment_id: string }> {
-    const r = await apiClient.post("/api/v1/billing/subscribe", {
-      plan_id,
-      provider,
-    });
+    const r = await apiClient.post("/api/v1/billing/topup", { amount, provider });
     return r.data;
   },
 
@@ -28,8 +20,8 @@ export const billingApi = {
     return r.data;
   },
 
-  async cancel(): Promise<Subscription> {
-    const r = await apiClient.post("/api/v1/billing/cancel");
+  async listTransactions(): Promise<BalanceTransaction[]> {
+    const r = await apiClient.get("/api/v1/billing/transactions");
     return r.data;
   },
 };

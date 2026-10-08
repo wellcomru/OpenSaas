@@ -13,7 +13,7 @@ import { tokenStorage } from "@/api/client";
 export function RedirectIfAuthenticated() {
   const router = useRouter();
   useEffect(() => {
-    if (tokenStorage.hasSession) router.replace("/dashboard");
+    if (tokenStorage.hasSession) router.replace("/chat");
   }, [router]);
   return null;
 }

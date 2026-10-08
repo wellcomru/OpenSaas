@@ -75,7 +75,7 @@ export function useAuth() {
     async login(email: string, password: string) {
       const res = await authApi.login(email, password);
       setSession(res.user, res.access_token, res.refresh_token);
-      router.push("/dashboard");
+      router.push("/chat");
       return res;
     },
 
@@ -100,7 +100,7 @@ export function useAuth() {
       if (res.pending_verification) {
         return { pendingVerification: true as const, userId: res.user.id };
       }
-      router.push("/dashboard");
+      router.push("/chat");
       return { pendingVerification: false as const };
     },
 

@@ -47,7 +47,7 @@ export function VerifyCodeForm({ userId, email }: { userId: string; email: strin
       const user = await authApi.verifyEmailCode(userId, code);
       setUser(user);
       toast.success("Email подтверждён");
-      router.push("/dashboard");
+      router.push("/chat");
     } catch (e) {
       const err = e as AxiosError<{ detail?: string }>;
       setError(err.response?.data?.detail ?? "Не удалось подтвердить");

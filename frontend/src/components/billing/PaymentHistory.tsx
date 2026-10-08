@@ -13,6 +13,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateTime, formatMoney } from "@/lib/utils";
 import { usePayments } from "@/hooks/useBilling";
 
+const statusLabel: Record<string, string> = {
+  success: "Оплачен",
+  pending: "Ожидает оплаты",
+  failed: "Не прошёл",
+  refunded: "Возврат",
+};
+
 const statusVariant: Record<
   string,
   "default" | "success" | "destructive" | "secondary" | "warning"
@@ -38,8 +45,7 @@ export function PaymentHistory() {
           <EmptyState
             icon={CreditCard}
             title="Платежей пока нет"
-            description="Выберите тариф — история появится здесь"
-            action={{ label: "Выбрать тариф", href: "/billing" }}
+            description="Пополните баланс — история появится здесь"
           />
         ) : (
           <div className="overflow-x-auto">
@@ -48,7 +54,6 @@ export function PaymentHistory() {
                 <tr className="border-b text-left text-xs uppercase text-muted-foreground">
                   <th className="py-2">Дата</th>
                   <th className="py-2">Сумма</th>
-                  <th className="py-2">Провайдер</th>
                   <th className="py-2">Статус</th>
                 </tr>
               </thead>
@@ -57,10 +62,9 @@ export function PaymentHistory() {
                   <tr key={p.id} className="border-b last:border-0">
                     <td className="py-3">{formatDateTime(p.created_at)}</td>
                     <td className="py-3">{formatMoney(p.amount, p.currency)}</td>
-                    <td className="py-3">{p.provider}</td>
                     <td className="py-3">
                       <Badge variant={statusVariant[p.status] ?? "default"}>
-                        {p.status}
+                        {statusLabel[p.status] ?? p.status}
                       </Badge>
                     </td>
                   </tr>

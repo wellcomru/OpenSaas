@@ -10,7 +10,13 @@ from modules.auth.models import (  # noqa: F401
     User,
     UserProfile,
 )
-from modules.billing.models import Payment, Plan, Subscription  # noqa: F401
+from modules.billing.models import (  # noqa: F401
+    BalanceTransaction,
+    Payment,
+    Plan,
+    Subscription,
+)
+from modules.ai_chat.models import AiModel, Chat, ChatMessage  # noqa: F401
 from modules.referrals.models import (  # noqa: F401
     ReferralCode,
     ReferralLink,
